@@ -1,7 +1,9 @@
 import React from 'react';
 import { CHART_HEIGHT, IDisplayItem } from '../App';
 import { saveToLocalStorage } from '../misc/CommonUtils';
-import Label from './Label';
+import CustomButton from './CustomButton';
+import CustomInput from './CustomInput';
+import CustomLabel from './CustomLabel';
 
 interface ITable {
     setRows: (rows: IDisplayItem[]) => void;
@@ -51,23 +53,33 @@ function Table(props: ITable) {
 
     return (
         <>
-            <button className='button' onClick={addRow}>Add</button>
+            <CustomButton label="Add" onClick={addRow} />
             <br />
             <div style={{ display: "inline-flex" }}>
-                <Label width={205} label='Label' chartLabel={false}/>
-                <Label width={110} label='Vision' chartLabel={false}/>
-                <Label width={100} label='Ability' chartLabel={false}/>
-                <Label width={50} label='Delete' chartLabel={false}/>
+                <CustomLabel width={200} label='Label' chartLabel={false} />
+                <CustomLabel width={110} label='Vision' chartLabel={false} />
+                <CustomLabel width={100} label='Ability' chartLabel={false} />
+                <CustomLabel width={50} label='Delete' chartLabel={false} />
             </div>
             {rows.map((row: IDisplayItem, index: number) =>
                 <form key={index + "form"}>
-                    <input key={index + "label"} type="text" defaultValue={row.label}
-                        onChange={(event) => updateRow(event, index, InputTypes.Label)} style={{ width: 200, marginLeft: 5 }} />
-                    <input key={index + "vision"} type="number" value={row.x / 4}
-                        onChange={(event) => updateRow(event, index, InputTypes.X)} style={{ width: 100, marginLeft: 5 }} max={100} min={0} />
-                    <input key={index + "ability"} type="number" value={(CHART_HEIGHT - row.y) / 4}
-                        onChange={(event) => updateRow(event, index, InputTypes.Y)} style={{ width: 90, marginLeft: 5, marginRight: 5 }} max={100} min={0} />
-                    <button className='button' onClick={() => deleteItem(index)}> Delete</button>
+                    <CustomInput uniqueKey={index + "label"}
+                        value={row.label}
+                        textField
+                        width={200}
+                        onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateRow(event, index, InputTypes.Label)}
+                    ></CustomInput>
+                    <CustomInput uniqueKey={index + "vision"}
+                        value={row.x / 4}
+                        width={100}
+                        onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateRow(event, index, InputTypes.X)}>
+                    </CustomInput>
+                    <CustomInput uniqueKey={index + "ability"}
+                        value={(CHART_HEIGHT - row.y) / 4}
+                        width={90}
+                        onChange={(event: React.ChangeEvent<HTMLInputElement>) => updateRow(event, index, InputTypes.Y)}>
+                    </CustomInput>
+                    <CustomButton label="Delete" onClick={() => deleteItem(index)} />
                 </form>)}
         </>
     );

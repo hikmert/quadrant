@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import './App.css';
 import Chart from './Components/Chart';
 import Table from './Components/Table';
 import { fetchRowData } from './misc/CommonUtils';
+import styled from 'styled-components'
 
 export const CHART_HEIGHT = 400;
 export const OFFSET_X = 400;
 export const OFFSET_Y = 200;
-
 
 export interface IDisplayItem {
   label: string;
@@ -17,17 +16,30 @@ export interface IDisplayItem {
 
 function App() {
   const fetchedRows = fetchRowData();
-  const [rows, setRows] = useState(fetchedRows);  
+  const [rows, setRows] = useState(fetchedRows);
   return (
     <>
-      <div style={{ top: OFFSET_Y, position: "absolute", left: OFFSET_X }}>
+      <LeftGrid>
         <Chart rows={rows} setRows={setRows} />
-      </div>
-      <div style={{ top: "25%", position: "absolute", left: OFFSET_X * 2.1 }}>
+      </LeftGrid>
+      <RightGrid>
         <Table setRows={setRows} rows={rows} />
-      </div>
+      </RightGrid>
     </>
   );
 }
 
+const LeftGrid = styled.div`
+position: absolute;
+top: ${OFFSET_Y + "px"};
+left: ${OFFSET_X + "px"} 
+`;
+
+const RightGrid = styled.div`
+position: absolute;
+top: 20%;
+left: ${OFFSET_X * 2.1 + "px"} 
+`;
+
 export default App;
+
