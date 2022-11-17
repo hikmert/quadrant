@@ -1,110 +1,100 @@
-import React, { BaseSyntheticEvent } from "react";
-import { BarStack } from "@visx/shape";
-import { SeriesPoint } from "@visx/shape/lib/types";
+import React, { useMemo, useState, useEffect } from "react";
+import { Drag, raise } from "@visx/drag";
 import { Group } from "@visx/group";
 import { GridRows } from "@visx/grid";
 import { AxisBottom, AxisLeft } from "@visx/axis";
-import cityTemperature, {
-  CityTemperature,
-} from "@visx/mock-data/lib/mocks/cityTemperature";
+import { BarStack } from "@visx/shape";
 import { scaleBand, scaleLinear, scaleOrdinal } from "@visx/scale";
-//@ts-ignore
-import { timeParse, timeFormat } from "d3-time-format";
-//@ts-ignore
-import { useTooltip, useTooltipInPortal, defaultStyles } from "@visx/tooltip";
-import { LegendOrdinal, LegendLabel, LegendItem } from "@visx/legend";
-import { Drag, raise } from "@visx/drag";
 
-type CityName = "New York" | "San Francisco" | "Austin";
-
-type TooltipData = {
-  bar: SeriesPoint<CityTemperature>;
-  key: CityName;
-  index: number;
-  height: number;
-  width: number;
+export interface Rect {
+  id: string;
   x: number;
   y: number;
-  color: string;
-};
+}
 
-export type BarStackProps = {
+const testArray = [
+  {
+    id: "1",
+    a: 100,
+    b: 200,
+    station: "A",
+  },
+  {
+    id: "2",
+    a: 300,
+    b: 200,
+    station: "B",
+  },
+  {
+    id: "3",
+    a: 200,
+    b: 200,
+    station: "C",
+  },
+  {
+    id: "4",
+    a: 300,
+    b: 200,
+    station: "D",
+  },
+];
+
+const colors = [
+  "#025aac",
+  "#02cff9",
+  "#02efff",
+  "#03aeed",
+  "#0384d7",
+  "#edfdff",
+  "#ab31ff",
+  "#5924d7",
+  "#d145ff",
+  "#1a02b1",
+  "#e582ff",
+  "#ff00d4",
+  "#270eff",
+  "#827ce2",
+];
+
+export type DragIProps = {
   width: number;
   height: number;
-  margin?: { top: number; right: number; bottom: number; left: number };
-  events?: boolean;
 };
 
-const green1 = "#0b2345";
-const green2 = "#135865";
-const green3 = "#3a956c";
-export const background = "#fff";
-const legendGlyphSize = 20;
-const defaultMargin = { top: 20, right: 100, bottom: 100, left: 0 };
-const tooltipStyles = {
-  ...defaultStyles,
-  minWidth: 60,
-  backgroundColor: "rgba(255,255,255,1)",
-  color: "#414243",
-  fontSize: 18,
-};
+export default function DragI({ width, height }: DragIProps) {
+  const [draggingItems, setDraggingItems] = useState<any[]>([]);
 
-const data = cityTemperature.slice(0, 8);
-const keys = Object.keys(data[0]).filter((d) => d !== "date") as CityName[];
+  useEffect(() => {
+    if (width > 10 && height > 10) setDraggingItems(testArray);
+  }, [width, height]);
 
-const verticalTickAmount = 5;
-
-const parseDate = timeParse("%Y-%m-%d");
-const format = timeFormat("%Y");
-const formatDate = (date: string) => format(parseDate(date) as Date);
-
-// accessors
-const getDate = (d: CityTemperature) => d.date;
-
-// scales
-const dateScale = scaleBand<string>({
-  domain: data.map(getDate),
-  padding: 0.2,
-});
-const temperatureScale = scaleLinear<number>({
-  domain: [0, 250],
-  nice: true,
-});
-const colorScale = scaleOrdinal<CityName, string>({
-  domain: keys,
-  range: [green1, green2, green3],
-});
-
-let tooltipTimeout: number;
-
-export default function Example({
-  width,
-  height,
-  events = false,
-  margin = defaultMargin,
-}: BarStackProps) {
-  const {
-    tooltipOpen,
-    tooltipLeft,
-    tooltipTop,
-    tooltipData,
-    hideTooltip,
-    showTooltip,
-  } = useTooltip<TooltipData>();
-
-  const { containerRef, TooltipInPortal } = useTooltipInPortal();
-
-  const chartRef = React.useRef<any>(null);
-
-  if (width < 50) return null;
-  // bounds
-  const xMax = width - margin.left - margin.right;
-  const yMax = height - margin.top - margin.bottom;
-
-  dateScale.rangeRound([0, xMax]);
-  temperatureScale.range([yMax, 0]);
+  const dragStarted = (item: Rect[], index: number) => {
+    console.log("drag started", item, index);
+    setDraggingItems(raise(draggingItems, index));
+  };
 
   const dragend = (
+    event: any,
+    index: number,
+    barStacks: any[],
+    barStack: any,
+    station: string
+  ) => {
+    const width = 114;
+    const lastX = event.dx + barStack.bars[index].x;
+    const onItem = barStacks
+      .map((i) => i.bars)
+      .map((i) => i.filter((j: any) => j.x <= lastX && j.x + width >= lastX));
+
+    if (onItem.length > 0) {
+      console.log("AA", onItem[0]["0"]?.bar?.data["station"]);
+
+      //draggingItems[index].station = onItem[0].bar.data["station"];
+      setDraggingItems([...draggingItems]);
+    }
+  };
+
+  /*   const dragend = (
     event: any,
     index: number,
     barStacks: any[],
@@ -112,22 +102,65 @@ export default function Example({
   ) => {
     // @ts-ignore
 
-    //  console.log(event, index, barStacks, barStack);
+    console.log(event, index, barStacks, barStack);
 
-    const width = 48;
+    const width = 114;
 
     const lastX = event.dx + barStack.bars[index].x;
     const onItem = barStacks
       .map((i) => i.bars)
       .map((i) => i.filter((j: any) => j.x <= lastX && j.x + width >= lastX));
     console.log(onItem);
+  }; */
+  const onDragMove = (items: Rect[], index: number) => {
+    draggingItems[index].x = items[index].x + 1;
+
+    const checkIncludesX = draggingItems.find(
+      (item) => item.x + 50 === items[index].x
+    );
+
+    if (checkIncludesX && checkIncludesX.id !== items[index].id) {
+      draggingItems[index].y = items[index].y + checkIncludesX.y;
+      setDraggingItems(raise(draggingItems, index));
+    }
   };
 
+  const colorScale = useMemo(
+    () =>
+      scaleOrdinal({
+        range: colors,
+        domain: testArray.map((d) => d.station),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [width, height]
+  );
+
+  const xMax = width;
+  const yMax = height;
+
+  if (draggingItems.length === 0 || width < 10) return null;
+
+  const keys = Object.keys(draggingItems[0]).filter((d) => d !== "station");
+
+  const getStation = (d: any) => d.station;
+
+  // scales
+  const dateScale = scaleBand<string>({
+    domain: draggingItems.map(getStation),
+    padding: 0.2,
+  });
+
+  const temperatureScale = scaleLinear<number>({
+    domain: [0, 500],
+  });
+
+  dateScale.rangeRound([0, xMax]);
+  temperatureScale.range([yMax, 0]);
+
   return (
-    // relative position is needed for correct tooltip positioning
-    <div style={{ position: "relative" }} ref={chartRef}>
-      <svg ref={containerRef} width={width} height={height}>
-        <Group left={margin.left} top={margin.top}>
+    <div className="Drag" style={{ touchAction: "none" }}>
+      <svg width={width} height={height}>
+        <Group left={20} top={10}>
           <GridRows
             scale={temperatureScale}
             width={xMax}
@@ -136,12 +169,10 @@ export default function Example({
             strokeOpacity={0.1}
             strokeDasharray="4,4"
             strokeWidth={2}
-            numTicks={verticalTickAmount}
           />
           <AxisLeft
             scale={temperatureScale}
             hideTicks
-            numTicks={verticalTickAmount}
             tickLabelProps={() => ({
               fill: "#aeaeae",
               fontWeight: 700,
@@ -164,7 +195,6 @@ export default function Example({
           <AxisBottom
             top={yMax}
             scale={dateScale}
-            tickFormat={formatDate}
             hideTicks
             tickLabelProps={() => ({
               fill: "#aeaeae",
@@ -175,119 +205,94 @@ export default function Example({
             strokeWidth={2}
             stroke="#dcdcdc"
           />
-          <BarStack<CityTemperature, CityName>
-            data={data}
+          <BarStack
+            data={draggingItems}
             keys={keys}
-            x={getDate}
+            x={getStation}
             xScale={dateScale}
             yScale={temperatureScale}
             color={colorScale}
           >
             {(barStacks) =>
               barStacks.map((barStack) =>
-                barStack.bars.map((bar, index) => (
-                  <Drag
-                    key={`drag-${bar.key + bar.y}`}
-                    width={width}
-                    height={height}
-                    x={bar.x}
-                    y={bar.y}
-                    onDragStart={(event: any) => {
-                      console.log("drag start", event);
-                    }}
-                    onDragEnd={(event: any) => {
-                      dragend(event, index, barStacks, barStack);
-                    }}
-                  >
-                    {({
-                      dragStart,
-                      dragEnd,
-                      dragMove,
-                      isDragging,
-                      x,
-                      y,
-                      dx,
-                      dy,
-                    }) => (
-                      <path
-                        d={`M${bar.x + bar.width / 1.5 / 4},${
-                          bar.y + bar.height
-                        } v-${bar.height} q0,-5 5,-5 h${
-                          bar.width / 1.5
-                        } q5,0 5,5 v${bar.height}`}
-                        fill={isDragging ? "blue" : bar.color}
-                        transform={`translate(${dx}, ${dy})`}
-                        onMouseMove={dragMove}
-                        onMouseUp={dragEnd}
-                        onMouseDown={dragStart}
-                        onTouchStart={dragStart}
-                        onTouchMove={dragMove}
-                        onTouchEnd={dragEnd}
-                      />
-                    )}
-                  </Drag>
-                ))
+                barStack.bars.map(
+                  (bar, index) => (
+                    console.log(bar),
+                    (
+                      <Drag
+                        key={`drag-${bar.key + bar.y}`}
+                        width={width}
+                        height={height}
+                        x={bar.x}
+                        y={bar.y}
+                        onDragStart={(event: any) => {
+                          console.log("drag start", event);
+                        }}
+                        onDragEnd={(event: any) => {
+                          const CityName = bar.key;
+                          dragend(
+                            event,
+                            index,
+                            barStacks,
+                            barStack,
+                            bar["bar"].data.station
+                          );
+                        }}
+                      >
+                        {({
+                          dragStart,
+                          dragEnd,
+                          dragMove,
+                          isDragging,
+                          x,
+                          y,
+                          dx,
+                          dy,
+                        }) => (
+                          <path
+                            d={`M${bar.x + bar.width / 1.5 / 4},${
+                              bar.y + bar.height
+                            } v-${bar.height} q0,-5 5,-5 h${
+                              bar.width / 1.5
+                            } q5,0 5,5 v${bar.height}`}
+                            fill={isDragging ? "blue" : bar.color}
+                            transform={`translate(${dx}, ${dy})`}
+                            onMouseMove={dragMove}
+                            onMouseUp={dragEnd}
+                            onMouseDown={dragStart}
+                            onTouchStart={dragStart}
+                            onTouchMove={dragMove}
+                            onTouchEnd={dragEnd}
+                          />
+                        )}
+                      </Drag>
+                    )
+                  )
+                )
               )
             }
           </BarStack>
         </Group>
       </svg>
-      <div
-        style={{
-          position: "absolute",
-          bottom: 40,
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          fontSize: "16px",
-          fontWeight: "bold",
-          color: "#414243",
-          textTransform: "uppercase",
-        }}
-      >
-        <LegendOrdinal scale={colorScale} direction="row">
-          {(labels) =>
-            labels.map((label, i) => (
-              <LegendItem>
-                <svg
-                  width={legendGlyphSize}
-                  height={legendGlyphSize}
-                  style={{ margin: "0 2px 0 20px" }}
-                >
-                  <circle
-                    fill={label.value}
-                    r={legendGlyphSize / 2}
-                    cx={legendGlyphSize / 2}
-                    cy={legendGlyphSize / 2}
-                  />
-                </svg>
-                <LegendLabel align="left" margin="0 8px">
-                  {label.text}
-                </LegendLabel>
-              </LegendItem>
-            ))
-          }
-        </LegendOrdinal>
-      </div>
 
-      {tooltipOpen && tooltipData && (
-        <TooltipInPortal
-          key={Math.random()} // update tooltip bounds each render
-          top={tooltipTop}
-          left={tooltipLeft}
-          style={tooltipStyles}
-        >
-          <div>
-            <strong style={{ color: tooltipData.color }}>
-              {tooltipData.key}
-            </strong>
-          </div>
-          <div>{tooltipData.bar.data[tooltipData.key]} TJ</div>
-          <div>
-            <small>{formatDate(getDate(tooltipData.bar.data))}</small>
-          </div>
-        </TooltipInPortal>
-      )}
+      <style>{`
+        .Drag {
+          display: flex;
+          flex-direction: column;
+          user-select: none;
+        }
+        svg {
+          margin: 1rem 0;
+        }
+        .deets {
+          display: flex;
+          flex-direction: row;
+          font-size: 12px;
+        }
+        .deets > div {
+          margin: 0.25rem;
+        }
+      `}</style>
     </div>
   );
 }
