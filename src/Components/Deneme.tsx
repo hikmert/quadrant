@@ -1,4 +1,4 @@
-import React from "react";
+import React, { BaseSyntheticEvent } from "react";
 import { BarStack } from "@visx/shape";
 import { SeriesPoint } from "@visx/shape/lib/types";
 import { Group } from "@visx/group";
@@ -40,7 +40,7 @@ const green2 = "#135865";
 const green3 = "#3a956c";
 export const background = "#fff";
 const legendGlyphSize = 20;
-const defaultMargin = { top: 20, right: 100, bottom: 100, left: 100 };
+const defaultMargin = { top: 20, right: 100, bottom: 100, left: 0 };
 const tooltipStyles = {
   ...defaultStyles,
   minWidth: 60,
@@ -53,15 +53,6 @@ const data = cityTemperature.slice(0, 8);
 const keys = Object.keys(data[0]).filter((d) => d !== "date") as CityName[];
 
 const verticalTickAmount = 5;
-
-const temperatureTotals = data.reduce((allTotals, currentDate) => {
-  const totalTemperature = keys.reduce((dailyTotal, k) => {
-    dailyTotal += Number(currentDate[k]);
-    return dailyTotal;
-  }, 0);
-  allTotals.push(totalTemperature);
-  return allTotals;
-}, [] as number[]);
 
 const parseDate = timeParse("%Y-%m-%d");
 const format = timeFormat("%Y");
@@ -76,7 +67,7 @@ const dateScale = scaleBand<string>({
   padding: 0.2,
 });
 const temperatureScale = scaleLinear<number>({
-  domain: [0, Math.max(...temperatureTotals)],
+  domain: [0, 250],
   nice: true,
 });
 const colorScale = scaleOrdinal<CityName, string>({
@@ -103,6 +94,8 @@ export default function Example({
 
   const { containerRef, TooltipInPortal } = useTooltipInPortal();
 
+  const chartRef = React.useRef<any>(null);
+
   if (width < 50) return null;
   // bounds
   const xMax = width - margin.left - margin.right;
@@ -111,9 +104,28 @@ export default function Example({
   dateScale.rangeRound([0, xMax]);
   temperatureScale.range([yMax, 0]);
 
+  const dragend = (
+    event: any,
+    index: number,
+    barStacks: any[],
+    barStack: any
+  ) => {
+    // @ts-ignore
+
+    //  console.log(event, index, barStacks, barStack);
+
+    const width = 48;
+
+    const lastX = event.dx + barStack.bars[index].x;
+    const onItem = barStacks
+      .map((i) => i.bars)
+      .map((i) => i.filter((j: any) => j.x <= lastX && j.x + width >= lastX));
+    console.log(onItem);
+  };
+
   return (
     // relative position is needed for correct tooltip positioning
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative" }} ref={chartRef}>
       <svg ref={containerRef} width={width} height={height}>
         <Group left={margin.left} top={margin.top}>
           <GridRows
@@ -173,15 +185,18 @@ export default function Example({
           >
             {(barStacks) =>
               barStacks.map((barStack) =>
-                barStack.bars.map((bar) => (
+                barStack.bars.map((bar, index) => (
                   <Drag
-                    key={`drag-${bar.key}`}
+                    key={`drag-${bar.key + bar.y}`}
                     width={width}
                     height={height}
                     x={bar.x}
                     y={bar.y}
                     onDragStart={(event: any) => {
                       console.log("drag start", event);
+                    }}
+                    onDragEnd={(event: any) => {
+                      dragend(event, index, barStacks, barStack);
                     }}
                   >
                     {({
@@ -200,7 +215,7 @@ export default function Example({
                         } v-${bar.height} q0,-5 5,-5 h${
                           bar.width / 1.5
                         } q5,0 5,5 v${bar.height}`}
-                        fill={bar.color}
+                        fill={isDragging ? "blue" : bar.color}
                         transform={`translate(${dx}, ${dy})`}
                         onMouseMove={dragMove}
                         onMouseUp={dragEnd}
