@@ -78,15 +78,13 @@ export default function DragI({ width, height }: DragIProps) {
     event: any,
     index: number,
     barStacks: any[],
-    barStack: any,
-    station: string
+    barStack: any
   ) => {
     const width = 114;
     const lastX = event.dx + barStack.bars[index].x;
     const onItem = barStacks
       .map((i) => i.bars)
       .map((i) => i.filter((j: any) => j.x <= lastX && j.x + width >= lastX));
-    console.log(draggingItems[index]);
     if (onItem.length > 0 && onItem[0][0]?.bar?.data.station) {
       draggingItems[index].station = onItem[0][0]?.bar?.data.station;
       setDraggingItems(raise(draggingItems, index));
@@ -192,13 +190,7 @@ export default function DragI({ width, height }: DragIProps) {
                     y={bar.y}
                     onDragStart={(event: any) => {}}
                     onDragEnd={(event: any) => {
-                      dragend(
-                        event,
-                        index,
-                        barStacks,
-                        barStack,
-                        bar["bar"].data.station
-                      );
+                      dragend(event, index, barStacks, barStack);
                     }}
                   >
                     {({
