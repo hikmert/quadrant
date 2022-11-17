@@ -1,169 +1,278 @@
-import React, { useMemo, useState, useEffect } from "react";
-import { scaleOrdinal } from "@visx/scale";
-import { LinearGradient } from "@visx/gradient";
+import React from "react";
+import { BarStack } from "@visx/shape";
+import { SeriesPoint } from "@visx/shape/lib/types";
+import { Group } from "@visx/group";
+import { GridRows } from "@visx/grid";
+import { AxisBottom, AxisLeft } from "@visx/axis";
+import cityTemperature, {
+  CityTemperature,
+} from "@visx/mock-data/lib/mocks/cityTemperature";
+import { scaleBand, scaleLinear, scaleOrdinal } from "@visx/scale";
+//@ts-ignore
+import { timeParse, timeFormat } from "d3-time-format";
+//@ts-ignore
+import { useTooltip, useTooltipInPortal, defaultStyles } from "@visx/tooltip";
+import { LegendOrdinal, LegendLabel, LegendItem } from "@visx/legend";
 import { Drag, raise } from "@visx/drag";
 
-export interface Rect {
-  id: string;
+type CityName = "New York" | "San Francisco" | "Austin";
+
+type TooltipData = {
+  bar: SeriesPoint<CityTemperature>;
+  key: CityName;
+  index: number;
+  height: number;
+  width: number;
   x: number;
   y: number;
-}
-
-const testArray = [
-  {
-    id: "1",
-    x: 100,
-    y: 200,
-  },
-  {
-    id: "2",
-    x: 300,
-    y: 200,
-  },
-  {
-    id: "3",
-    x: 200,
-    y: 200,
-  },
-  {
-    id: "4",
-    x: 300,
-    y: 200,
-  },
-];
-
-const colors = [
-  "#025aac",
-  "#02cff9",
-  "#02efff",
-  "#03aeed",
-  "#0384d7",
-  "#edfdff",
-  "#ab31ff",
-  "#5924d7",
-  "#d145ff",
-  "#1a02b1",
-  "#e582ff",
-  "#ff00d4",
-  "#270eff",
-  "#827ce2",
-];
-
-export type DragIProps = {
-  width: number;
-  height: number;
+  color: string;
 };
 
-export default function DragI({ width, height }: DragIProps) {
-  const [draggingItems, setDraggingItems] = useState<Rect[]>([]);
+export type BarStackProps = {
+  width: number;
+  height: number;
+  margin?: { top: number; right: number; bottom: number; left: number };
+  events?: boolean;
+};
 
-  useEffect(() => {
-    if (width > 10 && height > 10) setDraggingItems(testArray);
-  }, [width, height]);
+const green1 = "#0b2345";
+const green2 = "#135865";
+const green3 = "#3a956c";
+export const background = "#fff";
+const legendGlyphSize = 20;
+const defaultMargin = { top: 20, right: 100, bottom: 100, left: 100 };
+const tooltipStyles = {
+  ...defaultStyles,
+  minWidth: 60,
+  backgroundColor: "rgba(255,255,255,1)",
+  color: "#414243",
+  fontSize: 18,
+};
 
-  const dragStarted = (item: Rect[], index: number) => {
-    console.log("drag started", item, index);
-    setDraggingItems(raise(draggingItems, index));
-  };
+const data = cityTemperature.slice(0, 8);
+const keys = Object.keys(data[0]).filter((d) => d !== "date") as CityName[];
 
-  const onDragEnd = (item: Rect[], index: number) => {
-    console.log("drag end");
-    /*     draggingItems[index].y = item[index].y - 100;
+const verticalTickAmount = 5;
 
-    setDraggingItems(raise(draggingItems, index)); */
-  };
-  console.log(draggingItems);
-  const onDragMove = (items: Rect[], index: number) => {
-    draggingItems[index].x = items[index].x + 1;
+const temperatureTotals = data.reduce((allTotals, currentDate) => {
+  const totalTemperature = keys.reduce((dailyTotal, k) => {
+    dailyTotal += Number(currentDate[k]);
+    return dailyTotal;
+  }, 0);
+  allTotals.push(totalTemperature);
+  return allTotals;
+}, [] as number[]);
 
-    const checkIncludesX = draggingItems.find(
-      (item) => item.x + 50 === items[index].x
-    );
+const parseDate = timeParse("%Y-%m-%d");
+const format = timeFormat("%Y");
+const formatDate = (date: string) => format(parseDate(date) as Date);
 
-    if (checkIncludesX && checkIncludesX.id !== items[index].id) {
-      draggingItems[index].y = items[index].y + checkIncludesX.y;
-      setDraggingItems(raise(draggingItems, index));
-    }
-  };
+// accessors
+const getDate = (d: CityTemperature) => d.date;
 
-  const colorScale = useMemo(
-    () =>
-      scaleOrdinal({
-        range: colors,
-        domain: draggingItems.map((d) => d.id),
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [width, height]
-  );
+// scales
+const dateScale = scaleBand<string>({
+  domain: data.map(getDate),
+  padding: 0.2,
+});
+const temperatureScale = scaleLinear<number>({
+  domain: [0, Math.max(...temperatureTotals)],
+  nice: true,
+});
+const colorScale = scaleOrdinal<CityName, string>({
+  domain: keys,
+  range: [green1, green2, green3],
+});
 
-  if (draggingItems.length === 0 || width < 10) return null;
+let tooltipTimeout: number;
+
+export default function Example({
+  width,
+  height,
+  events = false,
+  margin = defaultMargin,
+}: BarStackProps) {
+  const {
+    tooltipOpen,
+    tooltipLeft,
+    tooltipTop,
+    tooltipData,
+    hideTooltip,
+    showTooltip,
+  } = useTooltip<TooltipData>();
+
+  const { containerRef, TooltipInPortal } = useTooltipInPortal();
+
+  if (width < 50) return null;
+  // bounds
+  const xMax = width - margin.left - margin.right;
+  const yMax = height - margin.top - margin.bottom;
+
+  dateScale.rangeRound([0, xMax]);
+  temperatureScale.range([yMax, 0]);
 
   return (
-    <div className="Drag" style={{ touchAction: "none" }}>
-      <svg width={width} height={height}>
-        <LinearGradient id="stroke" from="#ff00a5" to="#ffc500" />
-        <rect fill="#c4c3cb" width={width} height={height} rx={14} />
-
-        {testArray.map((d, i) => (
-          <Drag
-            key={`drag-${d.id}`}
-            width={width}
-            height={height}
-            x={d.x}
-            y={d.y}
-            onDragStart={() => {
-              dragStarted(draggingItems, i);
+    // relative position is needed for correct tooltip positioning
+    <div style={{ position: "relative" }}>
+      <svg ref={containerRef} width={width} height={height}>
+        <Group left={margin.left} top={margin.top}>
+          <GridRows
+            scale={temperatureScale}
+            width={xMax}
+            height={yMax}
+            stroke="black"
+            strokeOpacity={0.1}
+            strokeDasharray="4,4"
+            strokeWidth={2}
+            numTicks={verticalTickAmount}
+          />
+          <AxisLeft
+            scale={temperatureScale}
+            hideTicks
+            numTicks={verticalTickAmount}
+            tickLabelProps={() => ({
+              fill: "#aeaeae",
+              fontWeight: 700,
+              fontSize: 18,
+              textAnchor: "middle",
+              verticalAnchor: "middle",
+            })}
+            tickLength={30} // TODO: this is an ugly hack :)
+            strokeWidth={2}
+            stroke="#dcdcdc"
+            labelOffset={40}
+            label="Length (Sec)"
+            labelProps={{
+              fill: "#aeaeae",
+              fontWeight: 700,
+              fontSize: 14,
+              textAnchor: "middle",
             }}
-            onDragMove={() => {
-              onDragMove(draggingItems, i);
-            }}
-            onDragEnd={() => {
-              onDragEnd(draggingItems, i);
-            }}
+          />
+          <AxisBottom
+            top={yMax}
+            scale={dateScale}
+            tickFormat={formatDate}
+            hideTicks
+            tickLabelProps={() => ({
+              fill: "#aeaeae",
+              fontWeight: 700,
+              fontSize: 18,
+              textAnchor: "middle",
+            })}
+            strokeWidth={2}
+            stroke="#dcdcdc"
+          />
+          <BarStack<CityTemperature, CityName>
+            data={data}
+            keys={keys}
+            x={getDate}
+            xScale={dateScale}
+            yScale={temperatureScale}
+            color={colorScale}
           >
-            {({ dragStart, dragEnd, dragMove, isDragging, x, y, dx, dy }) => (
-              <rect
-                key={`dot-${d.id}`}
-                x={d.x}
-                y={d.y}
-                width={15}
-                height={30}
-                fill={isDragging ? "url(#stroke)" : colorScale(d.id)}
-                transform={`translate(${dx}, ${d.y})`}
-                fillOpacity={0.9}
-                stroke={isDragging ? "white" : "transparent"}
-                strokeWidth={2}
-                onMouseMove={dragMove}
-                onMouseUp={dragEnd}
-                onMouseDown={dragStart}
-                onTouchStart={dragStart}
-                onTouchMove={dragMove}
-                onTouchEnd={dragEnd}
-              />
-            )}
-          </Drag>
-        ))}
+            {(barStacks) =>
+              barStacks.map((barStack) =>
+                barStack.bars.map((bar) => (
+                  <Drag
+                    key={`drag-${bar.key}`}
+                    width={width}
+                    height={height}
+                    x={bar.x}
+                    y={bar.y}
+                    onDragStart={(event: any) => {
+                      console.log("drag start", event);
+                    }}
+                  >
+                    {({
+                      dragStart,
+                      dragEnd,
+                      dragMove,
+                      isDragging,
+                      x,
+                      y,
+                      dx,
+                      dy,
+                    }) => (
+                      <path
+                        d={`M${bar.x + bar.width / 1.5 / 4},${
+                          bar.y + bar.height
+                        } v-${bar.height} q0,-5 5,-5 h${
+                          bar.width / 1.5
+                        } q5,0 5,5 v${bar.height}`}
+                        fill={bar.color}
+                        transform={`translate(${dx}, ${dy})`}
+                        onMouseMove={dragMove}
+                        onMouseUp={dragEnd}
+                        onMouseDown={dragStart}
+                        onTouchStart={dragStart}
+                        onTouchMove={dragMove}
+                        onTouchEnd={dragEnd}
+                      />
+                    )}
+                  </Drag>
+                ))
+              )
+            }
+          </BarStack>
+        </Group>
       </svg>
+      <div
+        style={{
+          position: "absolute",
+          bottom: 40,
+          width: "100%",
+          display: "flex",
+          justifyContent: "center",
+          fontSize: "16px",
+          fontWeight: "bold",
+          color: "#414243",
+          textTransform: "uppercase",
+        }}
+      >
+        <LegendOrdinal scale={colorScale} direction="row">
+          {(labels) =>
+            labels.map((label, i) => (
+              <LegendItem>
+                <svg
+                  width={legendGlyphSize}
+                  height={legendGlyphSize}
+                  style={{ margin: "0 2px 0 20px" }}
+                >
+                  <circle
+                    fill={label.value}
+                    r={legendGlyphSize / 2}
+                    cx={legendGlyphSize / 2}
+                    cy={legendGlyphSize / 2}
+                  />
+                </svg>
+                <LegendLabel align="left" margin="0 8px">
+                  {label.text}
+                </LegendLabel>
+              </LegendItem>
+            ))
+          }
+        </LegendOrdinal>
+      </div>
 
-      <style>{`
-        .Drag {
-          display: flex;
-          flex-direction: column;
-          user-select: none;
-        }
-
-        svg {
-          margin: 1rem 0;
-        }
-        .deets {
-          display: flex;
-          flex-direction: row;
-          font-size: 12px;
-        }
-        .deets > div {
-          margin: 0.25rem;
-        }
-      `}</style>
+      {tooltipOpen && tooltipData && (
+        <TooltipInPortal
+          key={Math.random()} // update tooltip bounds each render
+          top={tooltipTop}
+          left={tooltipLeft}
+          style={tooltipStyles}
+        >
+          <div>
+            <strong style={{ color: tooltipData.color }}>
+              {tooltipData.key}
+            </strong>
+          </div>
+          <div>{tooltipData.bar.data[tooltipData.key]} TJ</div>
+          <div>
+            <small>{formatDate(getDate(tooltipData.bar.data))}</small>
+          </div>
+        </TooltipInPortal>
+      )}
     </div>
   );
 }

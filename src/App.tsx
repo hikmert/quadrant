@@ -3,7 +3,7 @@ import Chart from "./Components/Chart";
 import Table from "./Components/Table";
 import { fetchRowData } from "./misc/CommonUtils";
 import styled from "styled-components";
-import DraggableGraph from "./Components/Deneme";
+import BarGraph from "./Components/Deneme";
 
 export const CHART_HEIGHT = 400;
 export const OFFSET_X = 400;
@@ -20,7 +20,7 @@ function App() {
   const [rows, setRows] = useState(fetchedRows);
   return (
     <LeftGrid>
-      <DraggableGraph width={600} height={600} />
+      <BarGraph width={600} height={600} />
     </LeftGrid>
   );
 }
