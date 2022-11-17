@@ -26,6 +26,12 @@ const testArray = [
     station: "B",
   },
   {
+    id: "2",
+    a: 300,
+    b: 200,
+    station: "B",
+  },
+  {
     id: "3",
     a: 200,
     b: 200,
@@ -68,11 +74,6 @@ export default function DragI({ width, height }: DragIProps) {
     if (width > 10 && height > 10) setDraggingItems(testArray);
   }, [width, height]);
 
-  const dragStarted = (item: Rect[], index: number) => {
-    console.log("drag started", item, index);
-    setDraggingItems(raise(draggingItems, index));
-  };
-
   const dragend = (
     event: any,
     index: number,
@@ -85,42 +86,9 @@ export default function DragI({ width, height }: DragIProps) {
     const onItem = barStacks
       .map((i) => i.bars)
       .map((i) => i.filter((j: any) => j.x <= lastX && j.x + width >= lastX));
-
-    if (onItem.length > 0) {
-      console.log("AA", onItem[0]["0"]?.bar?.data["station"]);
-
-      //draggingItems[index].station = onItem[0].bar.data["station"];
-      setDraggingItems([...draggingItems]);
-    }
-  };
-
-  /*   const dragend = (
-    event: any,
-    index: number,
-    barStacks: any[],
-    barStack: any
-  ) => {
-    // @ts-ignore
-
-    console.log(event, index, barStacks, barStack);
-
-    const width = 114;
-
-    const lastX = event.dx + barStack.bars[index].x;
-    const onItem = barStacks
-      .map((i) => i.bars)
-      .map((i) => i.filter((j: any) => j.x <= lastX && j.x + width >= lastX));
-    console.log(onItem);
-  }; */
-  const onDragMove = (items: Rect[], index: number) => {
-    draggingItems[index].x = items[index].x + 1;
-
-    const checkIncludesX = draggingItems.find(
-      (item) => item.x + 50 === items[index].x
-    );
-
-    if (checkIncludesX && checkIncludesX.id !== items[index].id) {
-      draggingItems[index].y = items[index].y + checkIncludesX.y;
+    console.log(draggingItems[index]);
+    if (onItem.length > 0 && onItem[0][0]?.bar?.data.station) {
+      draggingItems[index].station = onItem[0][0]?.bar?.data.station;
       setDraggingItems(raise(draggingItems, index));
     }
   };
@@ -151,7 +119,7 @@ export default function DragI({ width, height }: DragIProps) {
   });
 
   const temperatureScale = scaleLinear<number>({
-    domain: [0, 500],
+    domain: [0, 1000],
   });
 
   dateScale.rangeRound([0, xMax]);
@@ -215,60 +183,52 @@ export default function DragI({ width, height }: DragIProps) {
           >
             {(barStacks) =>
               barStacks.map((barStack) =>
-                barStack.bars.map(
-                  (bar, index) => (
-                    console.log(bar),
-                    (
-                      <Drag
-                        key={`drag-${bar.key + bar.y}`}
-                        width={width}
-                        height={height}
-                        x={bar.x}
-                        y={bar.y}
-                        onDragStart={(event: any) => {
-                          console.log("drag start", event);
-                        }}
-                        onDragEnd={(event: any) => {
-                          const CityName = bar.key;
-                          dragend(
-                            event,
-                            index,
-                            barStacks,
-                            barStack,
-                            bar["bar"].data.station
-                          );
-                        }}
-                      >
-                        {({
-                          dragStart,
-                          dragEnd,
-                          dragMove,
-                          isDragging,
-                          x,
-                          y,
-                          dx,
-                          dy,
-                        }) => (
-                          <path
-                            d={`M${bar.x + bar.width / 1.5 / 4},${
-                              bar.y + bar.height
-                            } v-${bar.height} q0,-5 5,-5 h${
-                              bar.width / 1.5
-                            } q5,0 5,5 v${bar.height}`}
-                            fill={isDragging ? "blue" : bar.color}
-                            transform={`translate(${dx}, ${dy})`}
-                            onMouseMove={dragMove}
-                            onMouseUp={dragEnd}
-                            onMouseDown={dragStart}
-                            onTouchStart={dragStart}
-                            onTouchMove={dragMove}
-                            onTouchEnd={dragEnd}
-                          />
-                        )}
-                      </Drag>
-                    )
-                  )
-                )
+                barStack.bars.map((bar, index) => (
+                  <Drag
+                    key={`drag-${bar.key + bar.y}`}
+                    width={width}
+                    height={height}
+                    x={bar.x}
+                    y={bar.y}
+                    onDragStart={(event: any) => {}}
+                    onDragEnd={(event: any) => {
+                      dragend(
+                        event,
+                        index,
+                        barStacks,
+                        barStack,
+                        bar["bar"].data.station
+                      );
+                    }}
+                  >
+                    {({
+                      dragStart,
+                      dragEnd,
+                      dragMove,
+                      isDragging,
+                      x,
+                      y,
+                      dx,
+                      dy,
+                    }) => (
+                      <path
+                        d={`M${bar.x + bar.width / 1.5 / 4},${
+                          bar.y + bar.height
+                        } v-${bar.height} q0,-5 5,-5 h${
+                          bar.width / 1.5
+                        } q5,0 5,5 v${bar.height}`}
+                        fill={isDragging ? "blue" : bar.color}
+                        transform={`translate(${dx}, ${dy})`}
+                        onMouseMove={dragMove}
+                        onMouseUp={dragEnd}
+                        onMouseDown={dragStart}
+                        onTouchStart={dragStart}
+                        onTouchMove={dragMove}
+                        onTouchEnd={dragEnd}
+                      />
+                    )}
+                  </Drag>
+                ))
               )
             }
           </BarStack>
