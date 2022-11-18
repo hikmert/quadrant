@@ -161,6 +161,16 @@ export default function DragI({ width, height }: DragIProps) {
     <div className="Drag" style={{ touchAction: "none" }}>
       <svg width={width} height={height}>
         <Group left={50} top={-50}>
+          <line
+            x1={0}
+            x2={width}
+            y1={250}
+            y2={250}
+            stroke="red"
+            stroke-width="2"
+            stroke-dasharray="5,5"
+          />
+
           <GridRows
             scale={yScale}
             width={xMax}
