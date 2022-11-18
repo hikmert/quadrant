@@ -15,52 +15,37 @@ export interface Rect {
 const testArray = [
   {
     id: "1",
-    a: 100,
-    b: 200,
-    station: "A",
+    field1: 100,
+    field2: 500,
+    station: "Station A",
   },
   {
     id: "2",
-    a: 300,
-    b: 200,
-    station: "B",
-  },
-  {
-    id: "2",
-    a: 300,
-    b: 200,
-    station: "B",
+    field1: 300,
+    field2: 300,
+    station: "Station B",
   },
   {
     id: "3",
-    a: 200,
-    b: 200,
-    station: "C",
+    field1: 300,
+    field2: 200,
+    station: "Station C",
   },
   {
     id: "4",
-    a: 300,
-    b: 200,
-    station: "D",
+    field1: 200,
+    field2: 200,
+    station: "Station D",
+  },
+  {
+    id: "5",
+    field1: 300,
+    field2: 200,
+    station: "Station E",
   },
 ];
 
-const colors = [
-  "#025aac",
-  "#02cff9",
-  "#02efff",
-  "#03aeed",
-  "#0384d7",
-  "#edfdff",
-  "#ab31ff",
-  "#5924d7",
-  "#d145ff",
-  "#1a02b1",
-  "#e582ff",
-  "#ff00d4",
-  "#270eff",
-  "#827ce2",
-];
+const colors = ["red", "yellow", "blue", "green"];
 
 export type DragIProps = {
   width: number;
@@ -68,7 +53,7 @@ export type DragIProps = {
 };
 
 export default function DragI({ width, height }: DragIProps) {
-  const [draggingItems, setDraggingItems] = useState<any[]>([]);
+  const [draggingItems, setDraggingItems] = useState<any>([]);
 
   useEffect(() => {
     if (width > 10 && height > 10) setDraggingItems(testArray);
@@ -76,26 +61,61 @@ export default function DragI({ width, height }: DragIProps) {
 
   const dragend = (
     event: any,
-    index: number,
+    draggedIndex: number,
     barStacks: any[],
     barStack: any
   ) => {
-    const width = 114;
-    const lastX = event.dx + barStack.bars[index].x;
-    const onItem = barStacks
+    const _draggingItems = [...draggingItems];
+    const width = barStack.bars[0].width;
+    const lastX = event.dx + barStack.bars[draggedIndex].x;
+    const onItemBars = barStacks
       .map((i) => i.bars)
-      .map((i) => i.filter((j: any) => j.x <= lastX && j.x + width >= lastX));
-    if (onItem.length > 0 && onItem[0][0]?.bar?.data.station) {
-      draggingItems[index].station = onItem[0][0]?.bar?.data.station;
-      setDraggingItems(raise(draggingItems, index));
+      .map((i) =>
+        i.filter(
+          (j: any) => j.x - width * 0.9 <= lastX && j.x + width * 0.9 >= lastX
+        )
+      )[0];
+    const targetBar = onItemBars[0];
+
+    if (onItemBars.length > 0 && targetBar?.bar?.data) {
+      const draggedObject = barStack.bars[draggedIndex].bar.data;
+      if (
+        targetBar.bar.data[barStack.key] ||
+        targetBar.bar.data[barStack.key] === 0
+      ) {
+        const unique = uniqueID();
+        const newFieldKey: string =
+          barStack.key.split("_")[0] + "_" + unique + "_" + draggedObject.id;
+        _draggingItems.map((item, index) => {
+          _draggingItems[index][newFieldKey] =
+            index === targetBar.index ? draggedObject[barStack.key] : 0;
+        });
+        _draggingItems.find((i) => i.id === draggedObject.id)[barStack.key] = 0;
+      }
+
+      const emptyKeys: string[] = Object.keys(targetBar.bar.data)
+        .map((key) => {
+          return _draggingItems.every((a) => a[key] === 0) ? key : null;
+        })
+        .filter((i) => i != null) as string[];
+
+      _draggingItems.map((item, index) => {
+        emptyKeys.map((key) => delete _draggingItems[index][key]);
+      });
+      console.log("_draggingItems", _draggingItems);
+      setDraggingItems([..._draggingItems]);
     }
   };
+
+  function uniqueID() {
+    return Math.floor(Math.random() * Date.now());
+  }
 
   const colorScale = useMemo(
     () =>
       scaleOrdinal({
         range: colors,
-        domain: testArray.map((d) => d.station),
+        domain: testArray.map((d) => d.id),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [width, height]
@@ -106,29 +126,43 @@ export default function DragI({ width, height }: DragIProps) {
 
   if (draggingItems.length === 0 || width < 10) return null;
 
-  const keys = Object.keys(draggingItems[0]).filter((d) => d !== "station");
+  const keys = Object.keys(draggingItems[0]).filter(
+    (d) => d !== "station" && d !== "label" && d !== "id"
+  );
 
   const getStation = (d: any) => d.station;
 
   // scales
-  const dateScale = scaleBand<string>({
+  const xScale = scaleBand<string>({
     domain: draggingItems.map(getStation),
-    padding: 0.2,
+    padding: 0.4,
   });
 
-  const temperatureScale = scaleLinear<number>({
+  const yScale = scaleLinear<number>({
     domain: [0, 1000],
   });
 
-  dateScale.rangeRound([0, xMax]);
-  temperatureScale.range([yMax, 0]);
+  xScale.rangeRound([0, xMax]);
+  yScale.range([yMax, 0]);
+
+  const getColor = (d: any) => {
+    switch (d.key) {
+      case "field1":
+        return "blue";
+      case "field2":
+        return "green";
+      default:
+        if (d.key.split("_")[0] === "field1") return "blue";
+        return "green ";
+    }
+  };
 
   return (
     <div className="Drag" style={{ touchAction: "none" }}>
       <svg width={width} height={height}>
-        <Group left={20} top={10}>
+        <Group left={50} top={-50}>
           <GridRows
-            scale={temperatureScale}
+            scale={yScale}
             width={xMax}
             height={yMax}
             stroke="black"
@@ -137,7 +171,7 @@ export default function DragI({ width, height }: DragIProps) {
             strokeWidth={2}
           />
           <AxisLeft
-            scale={temperatureScale}
+            scale={yScale}
             hideTicks
             tickLabelProps={() => ({
               fill: "#aeaeae",
@@ -160,7 +194,7 @@ export default function DragI({ width, height }: DragIProps) {
           />
           <AxisBottom
             top={yMax}
-            scale={dateScale}
+            scale={xScale}
             hideTicks
             tickLabelProps={() => ({
               fill: "#aeaeae",
@@ -175,21 +209,22 @@ export default function DragI({ width, height }: DragIProps) {
             data={draggingItems}
             keys={keys}
             x={getStation}
-            xScale={dateScale}
-            yScale={temperatureScale}
+            xScale={xScale}
+            yScale={yScale}
             color={colorScale}
           >
             {(barStacks) =>
               barStacks.map((barStack) =>
                 barStack.bars.map((bar, index) => (
                   <Drag
-                    key={`drag-${bar.key + bar.y}`}
+                    key={`drag-${bar.key + bar.y + Math.random()}`}
                     width={width}
                     height={height}
                     x={bar.x}
                     y={bar.y}
                     onDragStart={(event: any) => {}}
                     onDragEnd={(event: any) => {
+                      console.log("keys", bar);
                       dragend(event, index, barStacks, barStack);
                     }}
                   >
@@ -202,23 +237,27 @@ export default function DragI({ width, height }: DragIProps) {
                       y,
                       dx,
                       dy,
-                    }) => (
-                      <path
-                        d={`M${bar.x + bar.width / 1.5 / 4},${
-                          bar.y + bar.height
-                        } v-${bar.height} q0,-5 5,-5 h${
-                          bar.width / 1.5
-                        } q5,0 5,5 v${bar.height}`}
-                        fill={isDragging ? "blue" : bar.color}
-                        transform={`translate(${dx}, ${dy})`}
-                        onMouseMove={dragMove}
-                        onMouseUp={dragEnd}
-                        onMouseDown={dragStart}
-                        onTouchStart={dragStart}
-                        onTouchMove={dragMove}
-                        onTouchEnd={dragEnd}
-                      />
-                    )}
+                    }) =>
+                      bar.bar.data[bar.key] != 0 && (
+                        <>
+                          <path
+                            d={`M${bar.x + bar.width / 1.5 / 4},${
+                              bar.y + bar.height
+                            } v-${bar.height} q0,-5 5,-5 h${
+                              bar.width / 1.5
+                            } q5,0 5,5 v${bar.height}`}
+                            fill={getColor(bar)}
+                            transform={`translate(${dx}, ${dy})`}
+                            onMouseMove={dragMove}
+                            onMouseUp={dragEnd}
+                            onMouseDown={dragStart}
+                            onTouchStart={dragStart}
+                            onTouchMove={dragMove}
+                            onTouchEnd={dragEnd}
+                          />
+                        </>
+                      )
+                    }
                   </Drag>
                 ))
               )

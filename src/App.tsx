@@ -20,13 +20,13 @@ function App() {
   const [rows, setRows] = useState(fetchedRows);
   return (
     <LeftGrid>
-      <BarGraph width={600} height={600} />
+      <BarGraph width={800} height={600} />
     </LeftGrid>
   );
 }
 
 const LeftGrid = styled.div`
-  padding: 10%;
+  paddingleft: 10%;
 `;
 
 const RightGrid = styled.div`

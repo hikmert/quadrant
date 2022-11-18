@@ -49,6 +49,7 @@
     ]
   },
   "devDependencies": {
+    "@types/d3-array": "^3.0.3",
     "@types/faker": "^6.6.9"
   }
 }
